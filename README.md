@@ -276,11 +276,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Made with ❤️ for farmers and agricultural professionals worldwide**
-
-### Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/precision-agriculture-advisor&type=Date)](https://star-history.com/#yourusername/precision-agriculture-advisor&Date)
+**Made with ❤️ for farmers and agricultural professionals worldwide By HyprDevs**
 
 ---
 
