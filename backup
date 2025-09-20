@@ -1,0 +1,524 @@
+import streamlit as st
+import requests
+import numpy as np
+import pandas as pd
+from datetime import datetime, timedelta
+import json
+import random
+from PIL import Image
+import io
+import base64
+
+# Page configuration
+st.set_page_config(
+    page_title="🌾 Precision Agriculture Advisor",
+    page_icon="🌾",
+    layout="wide"
+)
+
+# Custom CSS for better styling
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 2.5rem;
+        color: #2E8B57;
+        text-align: center;
+        padding: 1rem 0;
+        border-bottom: 3px solid #2E8B57;
+        margin-bottom: 2rem;
+    }
+    .metric-card {
+        background-color: #f0f8f0;
+        padding: 1rem;
+        border-radius: 10px;
+        border-left: 5px solid #2E8B57;
+        margin: 0.5rem 0;
+    }
+    .recommendation-card {
+        background-color: #fff8dc;
+        padding: 1rem;
+        border-radius: 10px;
+        border: 2px solid #daa520;
+        margin: 0.5rem 0;
+    }
+    .health-score-excellent {
+        color: #228B22;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    .health-score-good {
+        color: #32CD32;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    .health-score-fair {
+        color: #FFA500;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    .health-score-poor {
+        color: #FF4500;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Constants and Configuration
+OPENWEATHER_API_KEY = "f8b8c191703539dc598b47882487cf55"  # Replace with your actual API key
+SATELLITE_API_KEY = "dgQ644lryuvkGq8n3LkwHSH9ot1dqxFL2Bjzj2tS"  # Replace with your actual API key
+
+# Crop data with growing seasons and characteristics
+CROP_DATA = {
+    "wheat": {
+        "growing_season": 120,  # days
+        "planting_months": [10, 11, 12],  # October to December
+        "harvest_months": [4, 5, 6],  # April to June
+        "water_requirement": "moderate",
+        "fertilizer_schedule": ["planting", "30_days", "60_days"]
+    },
+    "rice": {
+        "growing_season": 150,
+        "planting_months": [6, 7, 8],  # June to August
+        "harvest_months": [11, 12, 1],  # November to January
+        "water_requirement": "high",
+        "fertilizer_schedule": ["planting", "20_days", "40_days", "60_days"]
+    },
+    "corn": {
+        "growing_season": 100,
+        "planting_months": [3, 4, 5],  # March to May
+        "harvest_months": [8, 9, 10],  # August to October
+        "water_requirement": "moderate",
+        "fertilizer_schedule": ["planting", "30_days", "60_days"]
+    },
+    "soybeans": {
+        "growing_season": 110,
+        "planting_months": [4, 5, 6],  # April to June
+        "harvest_months": [9, 10, 11],  # September to November
+        "water_requirement": "moderate",
+        "fertilizer_schedule": ["planting", "45_days"]
+    }
+}
+
+# Market price data (dummy data for prototype)
+MARKET_PRICES = {
+    "wheat": {"current": 250, "trend": "up", "forecast_30d": 265},
+    "rice": {"current": 180, "trend": "stable", "forecast_30d": 185},
+    "corn": {"current": 220, "trend": "down", "forecast_30d": 210},
+    "soybeans": {"current": 400, "trend": "up", "forecast_30d": 420}
+}
+
+def generate_placeholder_satellite_image():
+    """Generate a placeholder satellite image for demo purposes"""
+    # Create a simple farm field image using numpy
+    img = np.zeros((400, 400, 3), dtype=np.uint8)
+    
+    # Add green field areas
+    img[50:350, 50:350] = [34, 139, 34]  # Forest Green
+    
+    # Add some field patterns
+    for i in range(60, 340, 40):
+        img[i:i+20, 60:340] = [50, 205, 50]  # Lime Green
+    
+    # Add a water source (blue)
+    img[300:340, 300:340] = [30, 144, 255]  # Dodger Blue
+    
+    # Add some brown soil patches
+    img[100:140, 100:180] = [139, 69, 19]  # Saddle Brown
+    img[200:240, 250:330] = [160, 82, 45]  # Saddle Brown
+    
+    # Convert to PIL Image
+    return Image.fromarray(img)
+
+def simulate_crop_health_analysis(crop_type):
+    """Simulate AI-based crop health analysis"""
+    # Generate a realistic health score based on random factors
+    base_health = random.uniform(0.6, 0.95)
+    
+    # Add some crop-specific variations
+    crop_factors = {
+        "wheat": 0.02,
+        "rice": -0.01,
+        "corn": 0.01,
+        "soybeans": 0.0
+    }
+    
+    health_score = min(0.95, base_health + crop_factors.get(crop_type, 0))
+    
+    # Generate detailed analysis
+    issues = []
+    if health_score < 0.7:
+        issues.extend(["Water stress detected", "Nutrient deficiency possible"])
+    elif health_score < 0.8:
+        issues.append("Minor pest activity observed")
+    
+    return {
+        "health_score": health_score,
+        "status": get_health_status(health_score),
+        "issues": issues,
+        "ndvi_avg": health_score * 0.8,  # Normalized Difference Vegetation Index
+        "coverage": random.uniform(0.85, 0.98)
+    }
+
+def get_health_status(score):
+    """Convert health score to status"""
+    if score >= 0.85:
+        return "Excellent"
+    elif score >= 0.75:
+        return "Good"
+    elif score >= 0.65:
+        return "Fair"
+    else:
+        return "Poor"
+
+def fetch_weather_data(lat, lon, api_key):
+    """Fetch weather data from OpenWeatherMap API"""
+    if api_key == "YOUR_OPENWEATHER_API_KEY":
+        # Return dummy data for demo
+        return generate_dummy_weather_data()
+    
+    try:
+        # Current weather
+        current_url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        current_response = requests.get(current_url, timeout=10)
+        current_data = current_response.json()
+        
+        # 5-day forecast
+        forecast_url = f"http://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        forecast_response = requests.get(forecast_url, timeout=10)
+        forecast_data = forecast_response.json()
+        
+        return {
+            "current": current_data,
+            "forecast": forecast_data
+        }
+    except Exception as e:
+        st.warning(f"Could not fetch real weather data: {e}")
+        return generate_dummy_weather_data()
+
+def generate_dummy_weather_data():
+    """Generate dummy weather data for demo purposes"""
+    return {
+        "current": {
+            "main": {
+                "temp": random.uniform(20, 35),
+                "humidity": random.uniform(40, 80),
+                "pressure": random.uniform(1000, 1020)
+            },
+            "weather": [{"main": "Clear", "description": "clear sky"}],
+            "wind": {"speed": random.uniform(2, 8)},
+            "name": "Farm Location"
+        },
+        "forecast": {
+            "list": [
+                {
+                    "dt": int((datetime.now() + timedelta(days=i)).timestamp()),
+                    "main": {
+                        "temp": random.uniform(18, 32),
+                        "humidity": random.uniform(45, 75)
+                    },
+                    "weather": [{"main": random.choice(["Clear", "Clouds", "Rain"]), 
+                               "description": random.choice(["clear sky", "few clouds", "light rain"])}],
+                    "pop": random.uniform(0, 0.8)  # Probability of precipitation
+                }
+                for i in range(5)
+            ]
+        }
+    }
+
+def generate_recommendations(crop_type, weather_data, health_analysis):
+    """Generate personalized farming recommendations"""
+    recommendations = {
+        "irrigation": [],
+        "fertilizer": [],
+        "timing": [],
+        "general": []
+    }
+    
+    current_temp = weather_data["current"]["main"]["temp"]
+    current_humidity = weather_data["current"]["main"]["humidity"]
+    health_score = health_analysis["health_score"]
+    
+    # Irrigation recommendations
+    if current_humidity < 50 or current_temp > 30:
+        recommendations["irrigation"].append("🚰 Increase irrigation frequency due to high temperature/low humidity")
+    
+    if CROP_DATA[crop_type]["water_requirement"] == "high" and current_humidity < 60:
+        recommendations["irrigation"].append("💧 Rice requires consistent water levels - maintain 5-10cm standing water")
+    elif health_score < 0.7:
+        recommendations["irrigation"].append("💦 Crop shows signs of water stress - increase irrigation")
+    else:
+        recommendations["irrigation"].append("✅ Current irrigation appears adequate")
+    
+    # Fertilizer recommendations
+    current_month = datetime.now().month
+    crop_info = CROP_DATA[crop_type]
+    
+    if current_month in crop_info["planting_months"]:
+        recommendations["fertilizer"].append("🌱 Apply base fertilizer before planting")
+    
+    if health_score < 0.75:
+        recommendations["fertilizer"].append("🧪 Consider soil testing and micronutrient supplementation")
+    
+    recommendations["fertilizer"].append(f"📅 Follow {crop_type} fertilizer schedule: {', '.join(crop_info['fertilizer_schedule'])}")
+    
+    # Timing recommendations
+    if current_month in crop_info["planting_months"]:
+        recommendations["timing"].append(f"🌾 Optimal planting time for {crop_type}")
+    elif current_month in crop_info["harvest_months"]:
+        recommendations["timing"].append(f"🚜 Harvest season for {crop_type}")
+    else:
+        next_planting = min([m for m in crop_info["planting_months"] if m > current_month] + 
+                          [m + 12 for m in crop_info["planting_months"]])
+        months_to_planting = next_planting - current_month if next_planting <= 12 else next_planting - 12 - current_month
+        recommendations["timing"].append(f"📆 Next planting season in {months_to_planting} months")
+    
+    # General recommendations
+    if any("rain" in forecast["weather"][0]["description"].lower() 
+           for forecast in weather_data["forecast"]["list"][:3]):
+        recommendations["general"].append("🌧️ Rain expected - adjust irrigation and field activities")
+    
+    if health_score >= 0.85:
+        recommendations["general"].append("🎉 Crop health is excellent - maintain current practices")
+    
+    # Market-based recommendations
+    market_info = MARKET_PRICES.get(crop_type, {})
+    if market_info.get("trend") == "up":
+        recommendations["general"].append(f"📈 {crop_type.title()} prices trending up - good time for market sales")
+    
+    return recommendations
+
+def display_voice_input():
+    """Display voice input interface (placeholder)"""
+    st.markdown("### 🎤 Voice Input (Demo)")
+    
+    if st.button("🎙️ Start Voice Input"):
+        st.info("Voice input feature would be implemented using speech recognition libraries like SpeechRecognition or browser APIs")
+        
+        # Simulate voice input result
+        sample_inputs = [
+            "My wheat crop location is 28.6139 latitude, 77.2090 longitude",
+            "Check rice field health at coordinates 22.5726, 88.3639",
+            "Corn farm analysis needed for 40.7128, -74.0060"
+        ]
+        
+        simulated_input = random.choice(sample_inputs)
+        st.success(f"Simulated voice input: '{simulated_input}'")
+        
+        return simulated_input
+    
+    return None
+
+def main():
+    # Header
+    st.markdown('<h1 class="main-header">🌾 Precision Agriculture Advisor</h1>', unsafe_allow_html=True)
+    st.markdown("**AI-powered farming insights with satellite imagery and weather integration**")
+    
+    # Sidebar for inputs
+    with st.sidebar:
+        st.header("🔧 Farm Configuration")
+        
+        # Voice input section
+        voice_input = display_voice_input()
+        
+        st.markdown("---")
+        
+        # Crop selection
+        crop_type = st.selectbox(
+            "Select Crop Type:",
+            options=list(CROP_DATA.keys()),
+            format_func=lambda x: x.title()
+        )
+        
+        # Location input
+        st.subheader("📍 Farm Location")
+        col1, col2 = st.columns(2)
+        with col1:
+            latitude = st.number_input("Latitude", value=28.6139, format="%.4f")
+        with col2:
+            longitude = st.number_input("Longitude", value=77.2090, format="%.4f")
+        
+        # API Configuration
+        st.subheader("⚙️ API Configuration")
+        weather_api_key = st.text_input(
+            "OpenWeather API Key", 
+            value=OPENWEATHER_API_KEY, 
+            type="password",
+            help="Get your free API key from openweathermap.org"
+        )
+        
+        analyze_button = st.button("🚀 Analyze Farm", type="primary", use_container_width=True)
+    
+    # Main content area
+    if analyze_button:
+        st.markdown("---")
+        
+        with st.spinner("🛰️ Fetching satellite imagery and analyzing..."):
+            # Generate/fetch satellite image
+            satellite_image = generate_placeholder_satellite_image()
+            
+            # Analyze crop health
+            health_analysis = simulate_crop_health_analysis(crop_type)
+            
+            # Fetch weather data
+            weather_data = fetch_weather_data(latitude, longitude, weather_api_key)
+        
+        # Display results in columns
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            # Satellite Image
+            st.subheader("🛰️ Satellite Imagery")
+            st.image(satellite_image, caption=f"Farm Location: {latitude:.4f}, {longitude:.4f}")
+            
+            # Crop Health Analysis
+            st.subheader("🌱 Crop Health Analysis")
+            health_score = health_analysis["health_score"]
+            health_status = health_analysis["status"]
+            
+            # Color-coded health status
+            status_class = f"health-score-{health_status.lower()}"
+            st.markdown(f'<div class="{status_class}">Health Score: {health_score:.2%}</div>', 
+                       unsafe_allow_html=True)
+            st.markdown(f'<div class="{status_class}">Status: {health_status}</div>', 
+                       unsafe_allow_html=True)
+            
+            # Health metrics
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.metric("NDVI Average", f"{health_analysis['ndvi_avg']:.3f}")
+            with col_b:
+                st.metric("Coverage", f"{health_analysis['coverage']:.1%}")
+            
+            if health_analysis["issues"]:
+                st.warning("**Issues Detected:**")
+                for issue in health_analysis["issues"]:
+                    st.write(f"• {issue}")
+        
+        with col2:
+            # Current Weather
+            st.subheader("🌤️ Current Weather")
+            current = weather_data["current"]
+            
+            col_temp, col_hum, col_wind = st.columns(3)
+            with col_temp:
+                st.metric("Temperature", f"{current['main']['temp']:.1f}°C")
+            with col_hum:
+                st.metric("Humidity", f"{current['main']['humidity']:.0f}%")
+            with col_wind:
+                st.metric("Wind Speed", f"{current['wind']['speed']:.1f} m/s")
+            
+            st.write(f"**Conditions:** {current['weather'][0]['description'].title()}")
+            
+            # Weather Forecast
+            st.subheader("📅 5-Day Forecast")
+            forecast_data = []
+            for day in weather_data["forecast"]["list"]:
+                date = datetime.fromtimestamp(day["dt"]).strftime("%m/%d")
+                forecast_data.append({
+                    "Date": date,
+                    "Temp (°C)": f"{day['main']['temp']:.1f}",
+                    "Condition": day["weather"][0]["main"],
+                    "Rain Prob": f"{day['pop']*100:.0f}%"
+                })
+            
+            st.dataframe(forecast_data, hide_index=True, use_container_width=True)
+        
+        # Recommendations Section
+        st.markdown("---")
+        st.subheader("💡 Personalized Recommendations")
+        
+        recommendations = generate_recommendations(crop_type, weather_data, health_analysis)
+        
+        rec_col1, rec_col2 = st.columns(2)
+        
+        with rec_col1:
+            # Irrigation Recommendations
+            st.markdown("#### 🚰 Irrigation")
+            for rec in recommendations["irrigation"]:
+                st.markdown(f'<div class="recommendation-card">{rec}</div>', unsafe_allow_html=True)
+            
+            # Fertilizer Recommendations
+            st.markdown("#### 🧪 Fertilizer")
+            for rec in recommendations["fertilizer"]:
+                st.markdown(f'<div class="recommendation-card">{rec}</div>', unsafe_allow_html=True)
+        
+        with rec_col2:
+            # Timing Recommendations
+            st.markdown("#### ⏰ Timing")
+            for rec in recommendations["timing"]:
+                st.markdown(f'<div class="recommendation-card">{rec}</div>', unsafe_allow_html=True)
+            
+            # General Recommendations
+            st.markdown("#### 🌾 General")
+            for rec in recommendations["general"]:
+                st.markdown(f'<div class="recommendation-card">{rec}</div>', unsafe_allow_html=True)
+        
+        # Market Price Information
+        st.markdown("---")
+        st.subheader("💰 Market Price Analysis")
+        
+        if crop_type in MARKET_PRICES:
+            market_info = MARKET_PRICES[crop_type]
+            price_col1, price_col2, price_col3 = st.columns(3)
+            
+            with price_col1:
+                st.metric("Current Price", f"₹{market_info['current']}/quintal")
+            with price_col2:
+                trend_color = "🔴" if market_info['trend'] == 'down' else "🟢" if market_info['trend'] == 'up' else "🟡"
+                st.metric("Trend", f"{trend_color} {market_info['trend'].title()}")
+            with price_col3:
+                change = market_info['forecast_30d'] - market_info['current']
+                st.metric("30-Day Forecast", f"₹{market_info['forecast_30d']}/quintal", f"{change:+.0f}")
+    
+    else:
+        # Welcome message when no analysis has been run
+        st.markdown("---")
+        st.info("👈 **Configure your farm details in the sidebar and click 'Analyze Farm' to get started!**")
+        
+        # Feature showcase
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            ### 🛰️ Satellite Analysis
+            - Real-time crop health monitoring
+            - NDVI vegetation index
+            - Field coverage analysis
+            - Issue detection
+            """)
+        
+        with col2:
+            st.markdown("""
+            ### 🌤️ Weather Integration
+            - Current weather conditions
+            - 5-day detailed forecast
+            - Precipitation probability
+            - Weather-based recommendations
+            """)
+        
+        with col3:
+            st.markdown("""
+            ### 💡 Smart Recommendations
+            - Personalized irrigation advice
+            - Fertilizer scheduling
+            - Optimal timing guidance
+            - Market price insights
+            """)
+        
+        # Sample locations
+        st.markdown("---")
+        st.subheader("📍 Try These Sample Locations")
+        
+        sample_locations = [
+            {"name": "Punjab Wheat Fields", "lat": 30.9010, "lon": 75.8573, "crop": "wheat"},
+            {"name": "West Bengal Rice Fields", "lat": 22.5726, "lon": 88.3639, "crop": "rice"},
+            {"name": "Maharashtra Corn Fields", "lat": 19.7515, "lon": 75.7139, "crop": "corn"},
+            {"name": "Madhya Pradesh Soybean", "lat": 23.2599, "lon": 77.4126, "crop": "soybeans"}
+        ]
+        
+        for location in sample_locations:
+            st.write(f"**{location['name']}** - Lat: {location['lat']}, Lon: {location['lon']} ({location['crop'].title()})")
+
+if __name__ == "__main__":
+    main()
