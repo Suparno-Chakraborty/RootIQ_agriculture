@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌾 Farm Advisor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            color: #2d5016;
+            margin-bottom: 10px;
+        }
+        
+        .status-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 16px rgba(31, 38, 135, 0.2);
+            transition: transform 0.2s ease;
+        }
+        
+        .status-card:active {
+            transform: scale(0.98);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2d5016;
+        }
+        
+        .status-icon {
+            font-size: 1.5rem;
+        }
+        
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .metric {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+        }
+        
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2d5016;
+        }
+        
+        .metric-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .health-bar {
+            width: 100%;
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .health-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+        
+        .healthy { background: #4caf50; }
+        .moderate { background: #ff9800; }
+        .stressed { background: #f44336; }
+        
+        .action-list {
+            list-style: none;
+        }
+        
+        .action-item {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .action-item.urgent {
+            border-left-color: #f44336;
+        }
+        
+        .action-item.warning {
+            border-left-color: #ff9800;
+        }
+        
+        .voice-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .voice-button:hover {
+            transform: scale(1.1);
+        }
+        
+        .voice-button.listening {
+            background: linear-gradient(135deg, #f44336, #e53935);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .weather-forecast {
+            display: flex;
+            overflow-x: auto;
+            gap: 10px;
+            padding: 10px 0;
+        }
+        
+        .weather-day {
+            min-width: 80px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+            padding: 10px;
+        }
+        
+        .weather-icon {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+        }
+        
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+        
+        .close {
+            float: right;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .metric-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4caf50;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🌾 Farm Advisor</h1>
+            <p>AI-Powered Precision Agriculture</p>
+            <div id="lastUpdate">Last updated: <span id="updateTime">Loading...</span></div>
+        </div>
+
+        <!-- Farm Overview -->
+        <div class="status-card">
+            <div class="card-header">
+                <div class="card-title">Farm Overview</div>
+                <div class="status-icon" id="overallStatus">🌱</div>
+            </div>
+            <div class="metric-grid">
+                <div class="metric">
+                    <div class="metric-value" id="farmSize">15</div>
+                    <div class="metric-label">Hectares</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="cropHealth">78%</div>
+                    <div class="metric-label">Healthy</div>
+                </div>
+            </div>
+            <div class="health-bar">
+                <div class="health-fill healthy" id="healthBar" style="width: 78%"></div>
+            </div>
+        </div>
+
+        <!-- Weather Card -->
+        <div class="status-card">
+            <div class="card-header">
+                <div class="card-title">Weather Forecast</div>
+                <div class="status-icon">🌤️</div>
+            </div>
+            <div class="weather-forecast" id="weatherForecast">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading weather...
+                </div>
+            </div>
+        </div>
+
+        <!-- Soil Conditions -->
+        <div class="status-card">
+            <div class="card-header">
+                <div class="card-title">Soil Conditions</div>
+                <div class="status-icon">🧪</div>
+            </div>
+            <div class="metric-grid">
+                <div class="metric">
+                    <div class="metric-value" id="soilMoisture">65%</div>
+                    <div class="metric-label">Moisture</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="soilPH">6.8</div>
+                    <div class="metric-label">pH Level</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="nitrogen">75</div>
+                    <div class="metric-label">Nitrogen ppm</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="temperature">24°C</div>
+                    <div class="metric-label">Soil Temp</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Items -->
+        <div class="status-card">
+            <div class="card-header">
+                <div class="card-title">Today's Actions</div>
+                <div class="status-icon">📋</div>
+            </div>
+            <ul class="action-list" id="actionList">
+                <li class="action-item">
+                    ✅ Check irrigation system in sector 3
+                </li>
+                <li class="action-item warning">
+                    ⚠️ Apply fertilizer to stressed areas
+                </li>
+                <li class="action-item urgent">
+                    🚨 Investigate pest damage in north field
+                </li>
+                <li class="action-item">
+                    📊 Monitor NDVI readings after 2 PM
+                </li>
+            </ul>
+        </div>
+
+        <!-- Market Insights -->
+        <div class="status-card">
+            <div class="card-header">
+                <div class="card-title">Market Insights</div>
+                <div class="status-icon">💰</div>
+            </div>
+            <div class="metric-grid">
+                <div class="metric">
+                    <div class="metric-value" id="currentPrice">$180</div>
+                    <div class="metric-label">Current Price/ton</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="priceChange">+5.2%</div>
+                    <div class="metric-label">7-day change</div>
+                </div>
+            </div>
+            <div style="padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 8px; margin-top: 10px;">
+                <strong>Recommendation:</strong> Market conditions favorable for corn harvest in 2-3 weeks
+            </div>
+        </div>
+    </div>
+
+    <!-- Voice Command Button -->
+    <button class="voice-button" id="voiceBtn" onclick="toggleVoiceCommand()">
+        🎤
+    </button>
+
+    <!-- Voice Response Modal -->
+    <div id="voiceModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeVoiceModal()">&times;</span>
+            <h2>🎤 Voice Command</h2>
+            <div id="voiceStatus">Click the microphone and speak...</div>
+            <div id="voiceResponse"></div>
+        </div>
+    </div>
+
+    <script>
+        // Simulated data and functionality
+        let isListening = false;
+        let farmData = {
+            satellite_data: {
+                health_status: ['Healthy', 'Healthy', 'Moderate Stress', 'Healthy', 'High Stress'],
+                ndvi: [0.8, 0.7, 0.4, 0.75, 0.2],
+                soil_moisture: [65, 58, 72, 45, 38],
+                ph_level: [6.8, 6.5, 7.0, 6.2, 6.9],
+                nitrogen_level: [75, 68, 82, 55, 45],
+                temperature: [24, 26, 23, 25, 27]
+            },
+            weather_forecast: [
+                {date: 'Today', temperature: 26, rainfall: 0, weather_pattern: 'sunny', icon: '☀️'},
+                {date: 'Tomorrow', temperature: 24, rainfall: 2, weather_pattern: 'cloudy', icon: '⛅'},
+                {date: 'Day 3', temperature: 22, rainfall: 8, weather_pattern: 'rainy', icon: '🌧️'},
+                {date: 'Day 4', temperature: 25, rainfall: 0, weather_pattern: 'sunny', icon: '☀️'},
+                {date: 'Day 5', temperature: 28, rainfall: 0, weather_pattern: 'sunny', icon: '☀️'},
+                {date: 'Day 6', temperature: 23, rainfall: 5, weather_pattern: 'cloudy', icon: '⛅'},
+                {date: 'Day 7', temperature: 21, rainfall: 12, weather_pattern: 'rainy', icon: '🌧️'}
+            ]
+        };
+
+        // Voice commands simulation
+        const voiceCommands = {
+            'weather': "Today's weather: 26°C, sunny conditions. Good day for farming activities.",
+            'health': "Your crops are 78% healthy. Check areas with low NDVI values for problems.",
+            'water': "Soil moisture is 65%. Water levels are good for now.",
+            'fertilizer': "Add nitrogen fertilizer to sectors 4 and 5. Apply 150 kg per hectare.",
+            'profit': "Current corn price is $180 per ton. Market trend is positive at +5.2%.",
+            'help': "Say: 'weather' for weather, 'health' for crop health, 'water' for irrigation, 'fertilizer' for nutrients, 'profit' for market info."
+        };
+
+        // Initialize the app
+        function initializeApp() {
+            updateDateTime();
+            loadWeatherForecast();
+            updateFarmMetrics();
+            setInterval(updateDateTime, 60000); // Update every minute
+        }
+
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('updateTime').textContent = now.toLocaleTimeString();
+        }
+
+        function loadWeatherForecast() {
+            const forecastContainer = document.getElementById('weatherForecast');
+            forecastContainer.innerHTML = '';
+
+            farmData.weather_forecast.forEach(day => {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'weather-day';
+                dayElement.innerHTML = `
+                    <div class="weather-icon">${day.icon}</div>
+                    <div style="font-size: 0.8rem; font-weight: bold;">${day.date}</div>
+                    <div style="font-size: 0.9rem;">${day.temperature}°C</div>
+                    <div style="font-size: 0.8rem; color: #666;">${day.rainfall}mm</div>
+                `;
+                forecastContainer.appendChild(dayElement);
+            });
+        }
+
+        function updateFarmMetrics() {
+            // Calculate health percentage
+            const healthyCount = farmData.satellite_data.health_status.filter(status => status === 'Healthy').length;
+            const healthPercentage = Math.round((healthyCount / farmData.satellite_data.health_status.length) * 100);
+            
+            document.getElementById('cropHealth').textContent = healthPercentage + '%';
+            document.getElementById('healthBar').style.width = healthPercentage + '%';
+
+            // Update health bar color
+            const healthBar = document.getElementById('healthBar');
+            if (healthPercentage >= 80) {
+                healthBar.className = 'health-fill healthy';
+            } else if (healthPercentage >= 60) {
+                healthBar.className = 'health-fill moderate';
+            } else {
+                healthBar.className = 'health-fill stressed';
+            }
+
+            // Update soil metrics
+            const avgMoisture = Math.round(farmData.satellite_data.soil_moisture.reduce((a, b) => a + b, 0) / farmData.satellite_data.soil_moisture.length);
+            const avgPH = (farmData.satellite_data.ph_level.reduce((a, b) => a + b, 0) / farmData.satellite_data.ph_level.length).toFixed(1);
+            const avgNitrogen = Math.round(farmData.satellite_data.nitrogen_level.reduce((a, b) => a + b, 0) / farmData.satellite_data.nitrogen_level.length);
+            const avgTemp = Math.round(farmData.satellite_data.temperature.reduce((a, b) => a + b, 0) / farmData.satellite_data.temperature.length);
+
+            document.getElementById('soilMoisture').textContent = avgMoisture + '%';
+            document.getElementById('soilPH').textContent = avgPH;
+            document.getElementById('nitrogen').textContent = avgNitrogen;
+            document.getElementById('temperature').textContent = avgTemp + '°C';
+
+            // Update overall status icon
+            const overallStatus = document.getElementById('overallStatus');
+            if (healthPercentage >= 80) {
+                overallStatus.textContent = '🌱';
+            } else if (healthPercentage >= 60) {
+                overallStatus.textContent = '⚠️';
+            } else {
+                overallStatus.textContent = '🚨';
+            }
+        }
+
+        function toggleVoiceCommand() {
+            const modal = document.getElementById('voiceModal');
+            const btn = document.getElementById('voiceBtn');
+            
+            modal.style.display = 'block';
+            
+            if (!isListening) {
+                startListening();
+            } else {
+                stopListening();
+            }
+        }
+
+        function startListening() {
+            isListening = true;
+            const btn = document.getElementById('voiceBtn');
+            const status = document.getElementById('voiceStatus');
+            
+            btn.classList.add('listening');
+            btn.textContent = '🔴';
+            status.textContent = 'Listening... Speak your command';
+            status.style.color = '#f44336';
+
+            // Simulate voice recognition
+            setTimeout(() => {
+                simulateVoiceRecognition();
+            }, 2000);
+        }
+
+        function stopListening() {
+            isListening = false;
+            const btn = document.getElementById('voiceBtn');
+            
+            btn.classList.remove('listening');
+            btn.textContent = '🎤';
+        }
+
+        function simulateVoiceRecognition() {
+            const commands = Object.keys(voiceCommands);
+            const randomCommand = commands[Math.floor(Math.random() * commands.length)];
+            const response = voiceCommands[randomCommand];
+
+            const status = document.getElementById('voiceStatus');
+            const responseDiv = document.getElementById('voiceResponse');
+
+            status.textContent = `Heard: "${randomCommand}"`;
+            status.style.color = '#4caf50';
+            
+            responseDiv.innerHTML = `
+                <div style="background: #f0f8ff; padding: 15px; border-radius: 10px; margin-top: 15px;">
+                    <strong>🔊 Response:</strong><br>
+                    ${response}
+                </div>
+            `;
+
+            // Simulate text-to-speech
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(response);
+                utterance.rate = 0.8;
+                speechSynthesis.speak(utterance);
+            }
+
+            stopListening();
+        }
+
+        function closeVoiceModal() {
+            document.getElementById('voiceModal').style.display = 'none';
+            document.getElementById('voiceResponse').innerHTML = '';
+            document.getElementById('voiceStatus').textContent = 'Click the microphone and speak...';
+            document.getElementById('voiceStatus').style.color = '#333';
+            stopListening();
+        }
+
+        // Simulate real-time data updates
+        function simulateDataUpdate() {
+            // Randomly update some metrics
+            if (Math.random() > 0.7) {
+                const moistureChange = (Math.random() - 0.5) * 10;
+                farmData.satellite_data.soil_moisture = farmData.satellite_data.soil_moisture.map(
+                    moisture => Math.max(20, Math.min(80, moisture + moistureChange))
+                );
+                updateFarmMetrics();
+            }
+
+            // Update action items occasionally
+            if (Math.random() > 0.9) {
+                updateActionItems();
+            }
+        }
+
+        function updateActionItems() {
+            const actionList = document.getElementById('actionList');
+            const newActions = [
+                { text: '✅ Irrigation system check completed', class: '' },
+                { text: '📊 Satellite data updated - check new NDVI readings', class: '' },
+                { text: '⚠️ Weather alert: Rain expected in 48 hours', class: 'warning' },
+                { text: '🌱 Fertilizer application scheduled for tomorrow', class: '' },
+                { text: '🚨 Low moisture detected in sector 2', class: 'urgent' }
+            ];
+
+            const shuffled = newActions.sort(() => 0.5 - Math.random());
+            const selected = shuffled.slice(0, 4);
+
+            actionList.innerHTML = selected.map(action => 
+                `<li class="action-item ${action.class}">${action.text}</li>`
+            ).join('');
+        }
+
+        // Offline support
+        function checkOnlineStatus() {
+            if (navigator.onLine) {
+                document.body.style.opacity = '1';
+            } else {
+                document.body.style.opacity = '0.8';
+                // Show offline indicator
+                if (!document.getElementById('offlineIndicator')) {
+                    const indicator = document.createElement('div');
+                    indicator.id = 'offlineIndicator';
+                    indicator.style.cssText = `
+                        position: fixed; top: 0; left: 0; width: 100%; 
+                        background: #ff9800; color: white; text-align: center; 
+                        padding: 10px; z-index: 3000; font-weight: bold;
+                    `;
+                    indicator.textContent = '📡 Offline Mode - Using cached data';
+                    document.body.appendChild(indicator);
+                }
+            }
+        }
+
+        // Event listeners
+        window.addEventListener('online', checkOnlineStatus);
+        window.addEventListener('offline', checkOnlineStatus);
+
+        // Touch gestures for mobile
+        let startY = 0;
+        let startTime = 0;
+
+        document.addEventListener('touchstart', function(e) {
+            startY = e.touches[0].clientY;
+            startTime = new Date().getTime();
+        });
+
+        document.addEventListener('touchend', function(e) {
+            const endY = e.changedTouches[0].clientY;
+            const endTime = new Date().getTime();
+            const timeDiff = endTime - startTime;
+            const distance = startY - endY;
+
+            // Pull to refresh gesture
+            if (distance < -100 && timeDiff < 500) {
+                refreshData();
+            }
+        });
+
+        function refreshData() {
+            // Show loading indicator
+            const header = document.querySelector('.header');
+            header.style.opacity = '0.5';
+            
+            setTimeout(() => {
+                // Simulate data refresh
+                updateFarmMetrics();
+                loadWeatherForecast();
+                updateActionItems();
+                header.style.opacity = '1';
+                
+                // Show success message
+                showNotification('✅ Data refreshed!');
+            }, 1500);
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                background: #4caf50; color: white; padding: 15px 25px;
+                border-radius: 25px; z-index: 3000; font-weight: bold;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Progressive Web App features
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {
+                console.log('Service Worker registration failed');
+            });
+        }
+
+        // Initialize app when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            checkOnlineStatus();
+            
+            // Start periodic updates
+            setInterval(simulateDataUpdate, 30000); // Update every 30 seconds
+        });
+
+        // Keyboard shortcuts for accessibility
+        document.addEventListener('keydown', function(e) {
+            if (e.altKey) {
+                switch(e.key) {
+                    case 'v':
+                        e.preventDefault();
+                        toggleVoiceCommand();
+                        break;
+                    case 'r':
+                        e.preventDefault();
+                        refreshData();
+                        break;
+                }
+            }
+        });
+
+        // Emergency contact feature
+        function emergencyContact() {
+            if (confirm('Contact agricultural extension officer?')) {
+                // In real implementation, this would initiate a call or message
+                showNotification('📞 Contacting extension officer...');
+            }
+        }
+
+        // Add emergency button to header
+        document.addEventListener('DOMContentLoaded', function() {
+            const header = document.querySelector('.header');
+            const emergencyBtn = document.createElement('button');
+            emergencyBtn.style.cssText = `
+                background: #f44336; color: white; border: none;
+                padding: 8px 15px; border-radius: 15px; margin-top: 10px;
+                cursor: pointer; font-weight: bold;
+            `;
+            emergencyBtn.textContent = '🆘 Emergency Help';
+            emergencyBtn.onclick = emergencyContact;
+            header.appendChild(emergencyBtn);
+        });
+
+        // Export functionality for sharing reports
+        function shareReport() {
+            const reportData = {
+                timestamp: new Date().toISOString(),
+                farmSize: '15 hectares',
+                cropHealth: document.getElementById('cropHealth').textContent,
+                soilMoisture: document.getElementById('soilMoisture').textContent,
+                soilPH: document.getElementById('soilPH').textContent,
+                weather: farmData.weather_forecast[0],
+                actions: Array.from(document.querySelectorAll('.action-item')).map(item => item.textContent)
+            };
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Farm Status Report',
+                    text: `Farm Health: ${reportData.cropHealth}, Soil Moisture: ${reportData.soilMoisture}`,
+                    url: window.location.href
+                });
+            } else {
+                // Fallback: copy to clipboard
+                navigator.clipboard.writeText(JSON.stringify(reportData, null, 2))
+                    .then(() => showNotification('📋 Report copied to clipboard!'))
+                    .catch(() => showNotification('❌ Share failed'));
+            }
+        }
+    </script>
+</body>
+</html>
