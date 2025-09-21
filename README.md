@@ -261,23 +261,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Screenshots
 
 ### Main Dashboard
-![Dashboard]<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/1b4b8876-410c-4c88-aa60-ac29a91da70f" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/1b4b8876-410c-4c88-aa60-ac29a91da70f" />
 
 
 ### Weather Analysis
-![Weather]<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/a7027386-6332-4c37-a23a-1229be65dbcb" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/a7027386-6332-4c37-a23a-1229be65dbcb" />
 
 
 ### Market Analysis
-![Market] <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/412fcc15-e30c-4dfb-8cd7-7d4a40dfa5be" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/412fcc15-e30c-4dfb-8cd7-7d4a40dfa5be" />
 
 
 
 
 ---
-
-**Made with ❤️ for farmers and agricultural professionals worldwide By HyprDevs**
-
----
-
-*For more information, visit our [documentation](https://docs.precisionag-advisor.com) or check out our [demo video](https://youtube.com/watch?v=demo-video).*
